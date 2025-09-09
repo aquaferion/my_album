@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 음악 앨범 메이커</title>
+    <style>
+        /* 이전 CSS 동일, 생략 */
+        /* [위의 CSS는 이전 코드와 동일하니 생략] */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 나만의 음악 앨범 메이커</h1>
+            <p>MP3 파일을 업로드하여 나만의 음악 앨범을 만들어보세요. 이제 트랙 합성 기능도 지원!</p>
+        </div>
+        <div class="main-nav">
+            <button class="back-btn" onclick="showAlbumList()">← 앨범 목록으로 돌아가기</button>
+            <div class="action-buttons">
+                <button class="btn secondary" id="editBtn" onclick="toggleEdit()" style="display: none;">✏️ 앨범 편집</button>
+                <input type="file" id="fileInput" class="file-input" multiple accept=".mp3,.m4a,.wav,.mp4,audio/*" onchange="addTracks(this.files)">
+                <button class="btn success" onclick="document.getElementById('fileInput').click()" id="addTrackBtn" style="display: none;">📁 곡 추가</button>
+                <button class="btn" onclick="createNewAlbum()">➕ 새 앨범 만들기</button>
+            </div>
+        </div>
+        <div id="albumsList" class="albums-list">
+            <div class="albums-grid" id="albumsGrid"></div>
+            <div class="empty-state" id="emptyState">
+                <div class="icon">🎼</div>
+                <h2>아직 앨범이 없습니다</h2>
+                <p>첫 번째 음악 앨범을 만들어보세요!</p>
+                <br>
+                <button class="btn" onclick="createNewAlbum()">첫 번째 앨범 만들기</button>
+            </div>
+        </div>
+        <div id="albumDetail" class="album-detail">
+            <div class="album-info">
+                <div class="album-info-card">
+                    <div id="albumDisplay">
+                        <div class="album-cover" id="detailAlbumCover">🎵</div>
+                        <h2 id="detailAlbumTitle">앨범 제목</h2>
+                        <p id="detailAlbumArtist">아티스트</p>
+                        <p id="detailAlbumDescription">앨범 설명</p>
+                        <div class="album-stats">
+                            <span id="detailTrackCount">0곡</span>
+                            <span id="detailCreatedAt">2024.01.01</span>
+                        </div>
+                    </div>
+                    <div id="albumEditForm" class="edit-form">
+                        <div class="form-group">
+                            <label>앨범 커버</label>
+                            <input type="file" id="coverInput" accept="image/*" onchange="handleCoverUpload(this)">
+                        </div>
+                        <div class="form-group">
+                            <label>앨범 제목</label>
+                            <input type="text" id="editTitle" placeholder="앨범 제목을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label>아티스트</label>
+                            <input type="text" id="editArtist" placeholder="아티스트명을 입력하세요">
+                        </div>
+                        <div class="form-group">
+                            <label>장르</label>
+                            <select id="editGenre">
+                                <option value="">장르 선택</option>
+                                <option value="팝">팝</option>
+                                <option value="록">록</option>
+                                <option value="힙합">힙합</option>
+                                <option value="R&B">R&B</option>
+                                <option value="클래식">클래식</option>
+                                <option value="재즈">재즈</option>
+                                <option value="일렉트로닉">일렉트로닉</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>발매일</label>
+                            <input type="date" id="editReleaseDate">
+                        </div>
+                        <div class="form-group">
+                            <label>앨범 설명</label>
+                            <textarea id="editDescription" placeholder="앨범에 대한 설명을 입력하세요"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="tracks-section">
+                    <h3>트랙 리스트</h3>
+                    <br>
+                    <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+                         ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                        <div style="font-size: 40px; margin-bottom: 15px;">📁</div>
+                        <p>클릭하거나 파일을 여기로 드래그하여 곡을 추가하세요</p>
+                        <p style="font-size: 0.9em; opacity: 0.7; margin-top: 10px;">MP3, M4A, WAV 파일 지원 (최대 50MB 권장)</p>
+                    </div>
+                    <div id="tracksList"></div>
+                    <div id="tracksEmptyState" class="empty-state" style="padding: 40px 20px;">
+                        <div class="icon" style="font-size: 60px;">🎵</div>
+                        <h3>아직 곡이 없습니다</h3>
+                        <p>위의 업로드 영역을 클릭하여 첫 번째 곡을 추가해보세요</p>
+                    </div>
+                    <button class="btn" onclick="mergeSelectedTracks()" style="margin-top: 20px;">🔄 선택 트랙 합성 (2-3개)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="player" class="player">
+        <div class="player-content">
+            <button class="play-btn" id="playerPlayBtn" onclick="togglePlay()">▶️</button>
+            <div class="player-info">
+                <div class="player-title" id="playerTitle">곡 제목</div>
+                <div class="player-artist" id="playerArtist">아티스트</div>
+            </div>
+            <div class="progress-container">
+                <span class="time-display" id="currentTime">0:00</span>
+                <div class="progress-bar" onclick="seekTo(event)">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span class="time-display" id="totalTime">0:00</span>
+            </div>
+            <button class="icon-btn" onclick="closePlayer()">❌</button>
+        </div>
+        <audio id="audioPlayer" onloadedmetadata="updateDuration()" ontimeupdate="updateProgress()" onended="onTrackEnd()"></audio>
+    </div>
+    <script>
+        let albums = [];
+        let currentAlbum = null;
+        let isEditing = false;
+        let currentTrack = null;
+        let isPlaying = false;
+        let audioContext = null;
+
+        function loadData() {
+            console.log('데이터 로드 시작');
+            const savedAlbums = sessionStorage.getItem('musicAlbums');
+            if (savedAlbums) {
+                try {
+                    albums = JSON.parse(savedAlbums);
+                    console.log('로드된 앨범:', albums);
+                    renderAlbums();
+                } catch (error) {
+                    console.error('데이터 파싱 오류:', error);
+                    alert('저장된 데이터를 로드할 수 없습니다.');
+                }
+            } else {
+                showEmptyState();
+            }
+        }
+
+        function saveData() {
+            console.log('데이터 저장 시도:', albums);
+            try {
+                sessionStorage.setItem('musicAlbums', JSON.stringify(albums));
+                console.log('데이터 저장 완료');
+            } catch (error) {
+                console.error('세션 저장 오류:', error);
+                alert('데이터 저장에 실패했습니다. 용량 초과일 수 있습니다.');
+            }
+        }
+
+        function createNewAlbum() {
+            console.log('새 앨범 생성');
+            const newAlbum = {
+                id: Date.now(),
+                title: `새 앨범 ${albums.length + 1}`,
+                artist: '',
+                description: '',
+                genre: '',
+                releaseDate: new Date().toISOString().split('T')[0],
+                coverImage: null,
+                tracks: [],
+                createdAt: new Date().toLocaleDateString(),
+                plays: 0,
+                likes: 0
+            };
+            albums.push(newAlbum);
+            saveData();
+            showAlbumDetail(newAlbum);
+            toggleEdit();
+        }
+
+        function renderAlbums() {
+            console.log('앨범 목록 렌더링');
+            const grid = document.getElementById('albumsGrid');
+            grid.innerHTML = '';
+            albums.forEach(album => {
+                const albumCard = document.createElement('div');
+                albumCard.className = 'album-card';
+                albumCard.onclick = () => showAlbumDetail(album);
+                const coverStyle = album.coverImage ? `background-image: url(${album.coverImage})` : '';
+                albumCard.innerHTML = `
+                    <div class="album-cover" style="${coverStyle}">
+                        ${album.coverImage ? '' : '🎵'}
+                    </div>
+                    <div class="album-title">${album.title}</div>
+                    <div class="album-description">${album.description || '앨범 설명이 없습니다.'}</div>
+                    <div class="album-stats">
+                        <span>${album.tracks.length}곡</span>
+                        <button class="icon-btn delete" onclick="deleteAlbum(event, ${album.id})">🗑️</button>
+                    </div>
+                `;
+                grid.appendChild(albumCard);
+            });
+            if (albums.length === 0) showEmptyState();
+            else document.getElementById('emptyState').style.display = 'none';
+        }
+
+        function showEmptyState() {
+            console.log('빈 상태 표시');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+
+        function showAlbumDetail(album) {
+            console.log('앨범 상세 보기:', album.title);
+            currentAlbum = album;
+            document.getElementById('albumsList').style.display = 'none';
+            document.getElementById('albumDetail').classList.add('active');
+            document.querySelector('.back-btn').style.display = 'block';
+            document.getElementById('editBtn').style.display = 'block';
+            document.getElementById('addTrackBtn').style.display = 'block';
+            updateAlbumDisplay();
+            renderTracks();
+        }
+
+        function showAlbumList() {
+            console.log('앨범 목록으로 돌아가기');
+            document.getElementById('albumsList').style.display = 'block';
+            document.getElementById('albumDetail').classList.remove('active');
+            document.querySelector('.back-btn').style.display = 'none';
+            document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('addTrackBtn').style.display = 'none';
+            currentAlbum = null;
+            isEditing = false;
+            updateEditMode();
+            closePlayer();
+        }
+
+        function updateAlbumDisplay() {
+            if (!currentAlbum) return;
+            console.log('앨범 정보 업데이트:', currentAlbum.title);
+            const coverElement = document.getElementById('detailAlbumCover');
+            if (currentAlbum.coverImage) {
+                coverElement.style.backgroundImage = `url(${currentAlbum.coverImage})`;
+                coverElement.style.backgroundSize = 'cover';
+                coverElement.style.backgroundPosition = 'center';
+                coverElement.textContent = '';
+            } else {
+                coverElement.style.backgroundImage = '';
+                coverElement.textContent = '🎵';
+            }
+            document.getElementById('detailAlbumTitle').textContent = currentAlbum.title;
+            document.getElementById('detailAlbumArtist').textContent = currentAlbum.artist || '알 수 없는 아티스트';
+            document.getElementById('detailAlbumDescription').textContent = currentAlbum.description || '앨범 설명이 없습니다.';
+            document.getElementById('detailTrackCount').textContent = `${currentAlbum.tracks.length}곡`;
+            document.getElementById('detailCreatedAt').textContent = currentAlbum.createdAt;
+            document.getElementById('editTitle').value = currentAlbum.title;
+            document.getElementById('editArtist').value = currentAlbum.artist;
+            document.getElementById('editGenre').value = currentAlbum.genre;
+            document.getElementById('editReleaseDate').value = currentAlbum.releaseDate;
+            document.getElementById('editDescription').value = currentAlbum.description;
+        }
+
+        function toggleEdit() {
+            isEditing = !isEditing;
+            updateEditMode();
+        }
+
+        function updateEditMode() {
+            const display = document.getElementById('albumDisplay');
+            const form = document.getElementById('albumEditForm');
+            const btn = document.getElementById('editBtn');
+            if (isEditing) {
+                display.style.display = 'none';
+                form.classList.add('active');
+                btn.textContent = '💾 편집 완료';
+            } else {
+                display.style.display = 'block';
+                form.classList.remove('active');
+                btn.textContent = '✏️ 앨범 편집';
+                if (currentAlbum) {
+                    currentAlbum.title = document.getElementById('editTitle').value;
+                    currentAlbum.artist = document.getElementById('editArtist').value;
+                    currentAlbum.genre = document.getElementById('editGenre').value;
+                    currentAlbum.releaseDate = document.getElementById('editReleaseDate').value;
+                    currentAlbum.description = document.getElementById('editDescription').value;
+                    saveData();
+                    updateAlbumDisplay();
+                }
+            }
+        }
+
+        function handleCoverUpload(input) {
+            const file = input.files[0];
+            if (file && currentAlbum) {
+                console.log('앨범 커버 업로드:', file.name);
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentAlbum.coverImage = e.target.result;
+                    saveData();
+                    updateAlbumDisplay();
+                };
+                reader.onerror = function(e) {
+                    console.error('커버 이미지 로드 오류:', e);
+                    alert('커버 이미지 업로드에 실패했습니다.');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function addTracks(files) {
+            if (!currentAlbum || !files.length) {
+                console.warn('앨범 없음 또는 파일 선택 안됨');
+                alert('앨범을 선택하거나 파일을 업로드하세요.');
+                return;
+            }
+            console.log('트랙 추가 시작, 파일 수:', files.length);
+            let filesProcessed = 0;
+            Array.from(files).forEach(file => {
+                if (file.size > 50 * 1024 * 1024) {
+                    console.warn(`파일 크기 초과: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)}MB / 50MB)`);
+                    alert(`파일 ${file.name}이 너무 큽니다. 50MB 이하 파일을 사용하세요.`);
+                    return;
+                }
+                const url = URL.createObjectURL(file); // 파일 참조 URL 생성
+                console.log('파일 로드 완료:', file.name);
+                const track = {
+                    id: Date.now() + Math.random(),
+                    title: file.name.replace(/\.[^/.]+$/, ""),
+                    artist: currentAlbum.artist || '',
+                    url: url,
+                    duration: 0,
+                    plays: 0,
+                    selected: false
+                };
+                currentAlbum.tracks.push(track);
+                filesProcessed++;
+                if (filesProcessed === files.length) {
+                    console.log('모든 파일 처리 완료, 트랙 렌더링');
+                    saveData();
+                    renderTracks();
+                }
+            });
+        }
+
+        function toggleTrackSelection(trackId, checked) {
+            const track = currentAlbum.tracks.find(t => t.id === trackId);
+            if (track) {
+                track.selected = checked;
+                console.log(`트랙 선택 상태 변경: ${track.title}, ${checked}`);
+            }
+        }
+
+        function renderTracks() {
+            console.log('트랙 렌더링 시작');
+            const tracksList = document.getElementById('tracksList');
+            const emptyState = document.getElementById('tracksEmptyState');
+            if (!currentAlbum || currentAlbum.tracks.length === 0) {
+                tracksList.innerHTML = '';
+                emptyState.style.display = 'block';
+                console.log('트랙 없음, 빈 상태 표시');
+                return;
+            }
+            emptyState.style.display = 'none';
+            tracksList.innerHTML = '';
+            currentAlbum.tracks.forEach((track, index) => {
+                const trackElement = document.createElement('div');
+                trackElement.className = 'track-item';
+                trackElement.innerHTML = `
+                    <input type="checkbox" ${track.selected ? 'checked' : ''} onchange="toggleTrackSelection(${track.id}, this.checked)" />
+                    <div class="track-number">${index + 1}</div>
+                    <button class="play-btn" onclick="playTrack(${track.id})">
+                        ${currentTrack && currentTrack.id === track.id && isPlaying ? '⏸️' : '▶️'}
+                    </button>
+                    <div class="track-info">
+                        <div class="track-title">${track.title}</div>
+                        <div class="track-artist">${track.artist || '알 수 없는 아티스트'}</div>
+                    </div>
+                    <div class="track-actions">
+                        <button class="icon-btn delete" onclick="deleteTrack(${track.id})">🗑️</button>
+                    </div>
+                `;
+                tracksList.appendChild(trackElement);
+            });
+            console.log('트랙 렌더링 완료');
+        }
+
+        async function mergeSelectedTracks() {
+            console.log('트랙 합성 시작');
+            const selectedTracks = currentAlbum.tracks.filter(track => track.selected);
+            if (selectedTracks.length < 2 || selectedTracks.length > 3) {
+                console.warn('선택된 트랙 수 부적합:', selectedTracks.length);
+                alert('2~3개의 트랙을 선택하세요.');
+                return;
+            }
+            console.log('선택된 트랙:', selectedTracks.map(t => t.title));
+            try {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const buffers = await Promise.all(selectedTracks.map(async track => {
+                    const response = await fetch(track.url);
+                    if (!response.ok) throw new Error('오디오 파일 로드 실패');
+                    const arrayBuffer = await response.arrayBuffer();
+                    return audioContext.decodeAudioData(arrayBuffer).catch(err => {
+                        console.error('디코딩 오류:', err);
+                        throw err;
+                    });
+                }));
+                const offlineContext = new OfflineAudioContext(2, Math.max(...buffers.map(b => b.length)), buffers[0].sampleRate);
+                const source = offlineContext.createBufferSource();
+                source.buffer = buffers.reduce((merged, buffer) => {
+                    const newBuffer = offlineContext.createBuffer(2, Math.max(merged.length, buffer.length), offlineContext.sampleRate);
+                    for (let channel = 0; channel < 2; channel++) {
+                        newBuffer.copyToChannel(merged.getChannelData(channel), channel);
+                        newBuffer.copyToChannel(buffer.getChannelData(channel), channel, merged.length);
+                    }
+                    return newBuffer;
+                }, offlineContext.createBuffer(2, 0, offlineContext.sampleRate));
+                source.connect(offlineContext.destination);
+                source.start();
+                const renderedBuffer = await offlineContext.startRendering();
+                const wavBlob = await exportToWav(renderedBuffer);
+                const url = URL.createObjectURL(wavBlob);
+                const newTrack = {
+                    id: Date.now() + Math.random(),
+                    title: '합성된 새로운 트랙 ' + (currentAlbum.tracks.length + 1),
+                    artist: currentAlbum.artist || 'Mixed',
+                    url: url,
+                    duration: 0,
+                    plays: 0,
+                    selected: false
+                };
+                currentAlbum.tracks.push(newTrack);
+                selectedTracks.forEach(track => track.selected = false);
+                downloadBlob(wavBlob, 'mixed_track.wav');
+                console.log('합성 완료, 새 트랙 추가');
+                saveData();
+                renderTracks();
+                alert('새로운 합성 트랙이 추가되었습니다! 다운로드도 시작됩니다.');
+            } catch (error) {
+                console.error('합성 오류 상세:', error);
+                alert('트랙 합성에 실패했습니다: ' + error.message);
+            }
+        }
+
+        function exportToWav(buffer) {
+            return new Promise(resolve => {
+                const wavData = audioBufferToWav(buffer);
+                const wavBlob = new Blob([wavData], { type: 'audio/wav' });
+                resolve(wavBlob);
+            });
+        }
+
+        function audioBufferToWav(buffer) {
+            const numChannels = buffer.numberOfChannels;
+            const length = buffer.length * numChannels * 2 + 44;
+            const arrayBuffer = new ArrayBuffer(length);
+            const view = new DataView(arrayBuffer);
+            let offset = 0;
+
+            function writeString(s) { for (let i = 0; i < s.length; i++) view.setUint8(offset++, s.charCodeAt(i)); }
+            function writeUint16(n) { view.setUint16(offset, n, true); offset += 2; }
+            function writeUint32(n) { view.setUint32(offset, n, true); offset += 4; }
+
+            writeString('RIFF');
+            writeUint32(length - 8);
+            writeString('WAVE');
+            writeString('fmt ');
+            writeUint32(16);
+            writeUint16(1); // PCM
+            writeUint16(numChannels);
+            writeUint32(buffer.sampleRate);
+            writeUint32(buffer.sampleRate * numChannels * 2);
+            writeUint16(numChannels * 2);
+            writeUint16(16); // 비트 깊이
+            writeString('data');
+            writeUint32(buffer.length * numChannels * 2);
+
+            for (let i = 0; i < buffer.length; i++) {
+                for (let channel = 0; channel < numChannels; channel++) {
+                    const sample = Math.max(-1, Math.min(1, buffer.getChannelData(channel)[i])) * 0x7FFF;
+                    view.setInt16(offset, sample, true);
+                    offset += 2;
+                }
+            }
+
+            return arrayBuffer;
+        }
+
+        function downloadBlob(blob, filename) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+
+        function playTrack(trackId) {
+            console.log('트랙 재생 시도:', trackId);
+            const track = currentAlbum.tracks.find(t => t.id === trackId);
+            if (!track) {
+                console.warn('트랙 없음:', trackId);
+                return;
+            }
+            const audio = document.getElementById('audioPlayer');
+            if (currentTrack && currentTrack.id === trackId) {
+                if (isPlaying) {
+                    audio.pause();
+                    isPlaying = false;
+                } else {
+                    audio.play().catch(error => console.error('재생 오류:', error));
+                    isPlaying = true;
+                }
+            } else {
+                currentTrack = track;
+                audio.src = track.url;
+                audio.load();
+                audio.play().catch(error => console.error('재생 오류:', error));
+                isPlaying = true;
+                document.getElementById('playerTitle').textContent = track.title;
+                document.getElementById('playerArtist').textContent = track.artist || '알 수 없는 아티스트';
+                document.getElementById('player').classList.add('active');
+            }
+            updatePlayerButton();
+            renderTracks();
+        }
+
+        function togglePlay() {
+            if (!currentTrack) {
+                console.warn('재생할 트랙 없음');
+                return;
+            }
+            const audio = document.getElementById('audioPlayer');
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+            } else {
+                audio.play().catch(error => console.error('재생 오류:', error));
+                isPlaying = true;
+            }
+            updatePlayerButton();
+            renderTracks();
+        }
+
+        function updatePlayerButton() {
+            const btn = document.getElementById('playerPlayBtn');
+            btn.textContent = isPlaying ? '⏸️' : '▶️';
+        }
+
+        function closePlayer() {
+            console.log('플레이어 닫기');
+            const audio = document.getElementById('audioPlayer');
+            audio.pause();
+            audio.src = '';
+            currentTrack = null;
+            isPlaying = false;
+            document.getElementById('player').classList.remove('active');
+            renderTracks();
+        }
+
+        function updateProgress() {
+            const audio = document.getElementById('audioPlayer');
+            if (!audio.duration) return;
+            const progress = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+        }
+
+        function updateDuration() {
+            const audio = document.getElementById('audioPlayer');
+            document.getElementById('totalTime').textContent = formatTime(audio.duration);
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function seekTo(event) {
+            const audio = document.getElementById('audioPlayer');
+            if (!audio.duration) return;
+            const progressBar = event.currentTarget;
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const width = rect.width;
+            const percentage = clickX / width;
+            audio.currentTime = audio.duration * percentage;
+        }
+
+        function onTrackEnd() {
+            console.log('트랙 종료');
+            isPlaying = false;
+            updatePlayerButton();
+            renderTracks();
+        }
+
+        function deleteTrack(trackId) {
+            if (!currentAlbum) return;
+            if (confirm('이 트랙을 삭제하시겠습니까?')) {
+                currentAlbum.tracks = currentAlbum.tracks.filter(track => track.id !== trackId);
+                if (currentTrack && currentTrack.id === trackId) closePlayer();
+                console.log('트랙 삭제:', trackId);
+                saveData();
+                renderTracks();
+            }
+        }
+
+        function deleteAlbum(event, albumId) {
+            event.stopPropagation();
+            if (confirm('이 앨범을 삭제하시겠습니까?')) {
+                albums = albums.filter(album => album.id !== albumId);
+                console.log('앨범 삭제:', albumId);
+                saveData();
+                if (currentAlbum && currentAlbum.id === albumId) showAlbumList();
+                renderAlbums();
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+            console.log('드래그 오버');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+            console.log('드래그 떠남');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            console.log('드롭 발생, 파일 수:', event.dataTransfer.files.length);
+            const files = event.dataTransfer.files;
+            addTracks(files);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('페이지 로드');
+            loadData();
+        });
+    </script>
+</body>
+</html>
